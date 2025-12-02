@@ -2,12 +2,13 @@
 
 # Import python packages
 import streamlit as st
-from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 from snowflake.snowpark.functions import when_matched
 
 # Snowparkセッションの取得
-session = get_active_session()
+cnx = st.connection("snowflake")
+session = cnx.session()
+
 
 # --- 注文フォーム（Custom Smoothie Order Form）のロジック ---
 
