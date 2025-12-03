@@ -56,7 +56,7 @@ if ingredients_list:
         st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
         
     # 注文の処理ロジック (簡略化)
-    ingredients_string = ' '.join(fruits_selected)
+    ingredients_string = ' '.join(ingredients_list)
     
     if time_to_insert:
         if name_on_order:
