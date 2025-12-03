@@ -86,6 +86,9 @@ if ingredients_list:
             
             # --- 【修正】VARCHAR(文字列)として挿入する ---
             ingredients_string = ', '.join(ingredients_list)
+
+            # 現在のタイムスタンプをSQLフレンドリーな形式で取得
+            current_time_str = datetime.datetime.now().strftime("'%Y-%m-%d %H:%M:%S'")
             
             # 注文が 'order_filled' カラムを持つ場合に対応するため、FALSEで挿入
             # DORAチェックのハッシュ値が一致するため、ordersテーブルに 'order_filled' カラムがあることが前提
