@@ -34,7 +34,7 @@ ingredients_list = st.multiselect(
 
 time_to_insert = st.button('Submit Order')
 
-if ingredients_list and time_to_insert:
+if ingredients_list :
     # 選択されたフルーツをカンマ区切りの文字列に変換
     ingredients_string = ' '
 
