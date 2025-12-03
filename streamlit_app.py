@@ -1,12 +1,13 @@
-# Custom Smoothie Order Form & Pending Orders
-
 # Import python packages
 import streamlit as st
-import requests  # <-- これを追加
+import requests 
 from snowflake.snowpark.functions import col
-from snowflake.snowpark.functions import when_matched
+import pandas as pd
+import json # JSONデータの処理のために追加
 
 # Snowparkセッションの取得
+# Streamlitのコンポーネントとして接続名を直接指定
+# NOTE: 'snowflake'という接続名はStreamlit環境で事前に設定されている必要があります。
 cnx = st.connection("snowflake")
 session = cnx.session()
 
@@ -19,54 +20,90 @@ st.write(
   """Choose the fruits you want in your custom Smoothie!
   """)
 
+# 1. 注文者の名前
 name_on_order = st.text_input('Name on Smoothie:')
-st.write('The name on your Smoothie will be:', name_on_order)
 
-# データベースから利用可能なフルーツのオプションを取得
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON')).collect()
-# st.dataframe(data=my_dataframe, use_container_width=True)
-# st.stop()
+# 2. データベースからフルーツオプションを取得
+# データを取得し、キャッシュを使用して高速化
+# 関数がPandas DataFrameを返すように修正
+@st.cache_data
+def get_fruit_options():
+    # FRUIT_NAMEとSEARCH_ONカラムのみを取得し、Pandas DataFrameとして返す
+    return session.table("smoothies.public.fruit_options")\
+        .select(col('FRUIT_NAME'), col('SEARCH_ON'))\
+        .to_pandas()
 
-# Convert the Snowpark Dataframe to a Pandas Dataframe so we can use the LOC function
-pd_df=my_dataframe.to_pandas()
-# st.dataframe(pd_df)
-# st.stop()
+# my_dataframe は now Pandas DataFrame
+pd_df = get_fruit_options()
 
-# ingredients_list (st.multiselectはリストを期待するため、my_dataframeをリストに変換)
+# 3. 選択肢リストの作成
 ingredients_list = st.multiselect(
-'Choose up to 5 ingredients:'
-, [row[0] for row in my_dataframe] 
-, max_selections=5
+    'Choose up to 5 ingredients:'
+    , pd_df['FRUIT_NAME'].tolist() # リストを渡す
+    , max_selections=5
 )
 
-time_to_insert = st.button('Submit Order')
-
+# 4. 注文ロジックの定義
+# 選択された材料がある場合にのみ処理を実行
 if ingredients_list:
     
-    # 選択されたフルーツの表示名と検索名 (SEARCH_ON) を対応付ける辞書を作成
-    # { 'Apple': 'Apple', 'Ximenia': 'Ximenia fruit', ... }
-    search_on_dict = {row[0]: row[1] for row in my_dataframe}
+    # 選択されたフルーツの栄養情報を表示
+    st.subheader('Selected Ingredients and Nutrition:')
     
     # 選択されたフルーツのリストを処理
     for fruit_chosen_display in ingredients_list:
-        search_on=pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
-        st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
 
-        # データベースから対応する SEARCH_ON の値を取得
-        fruit_chosen_search = search_on_dict.get(fruit_chosen_display)
+        # Pandas DataFrameから対応する 'SEARCH_ON' の値を取得
+        # loc[条件, カラム名] でフィルタリングし、最初の値 (.iloc[0]) を取得
+        # フィルタリングされた結果が空でないことを前提とする (データ品質による)
+        search_on_row = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen_display]
         
-        # 選択されたフルーツの栄養情報を表示
-        st.subheader(fruit_chosen_display + ' Nutrition Information')
-        
-        # API呼び出しに SEARCH_ON の値を使用
-        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen_search)
-        
-        # APIレスポンスをデータフレームとして表示
-        st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-        
-    # 注文の処理ロジック (簡略化)
-    ingredients_string = ' '.join(ingredients_list)
+        if not search_on_row.empty:
+            search_on = search_on_row['SEARCH_ON'].iloc[0]
+
+            # 外部APIから栄養情報を取得
+            smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_on)
+            
+            st.write(f"**{fruit_chosen_display}** ({search_on})")
+            
+            try:
+                # APIレスポンスをJSONとして解析
+                nutrition_data = smoothiefroot_response.json()
+                
+                # APIレスポンスがリストではなく辞書の場合に対応するため、リストにラップしてデータフレーム表示
+                st.dataframe(data=pd.DataFrame([nutrition_data]), use_container_width=True)
+            except json.JSONDecodeError:
+                st.warning(f"Warning: Could not decode JSON for {fruit_chosen_display}. Raw response: {smoothiefroot_response.text[:50]}...")
+        else:
+            st.warning(f"Error: Could not find 'SEARCH_ON' value for {fruit_chosen_display}.")
+            
+    # 注文処理のトリガーボタン
+    time_to_insert = st.button('Submit Order')
     
+    # 5. 注文ボタンが押された場合の処理
     if time_to_insert:
         if name_on_order:
-            st.success('Your Smoothie is on its way, ' + name_on_order + '!', icon="✅")
+            
+            # 注文内容を文字列に変換
+            ingredients_string = ', '.join(ingredients_list)
+            
+            # --- Snowflakeへのデータ挿入処理 ---
+            # プレースホルダーを使用してSQLインジェクションのリスクを低減
+            insert_query = f"""
+                INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+                VALUES ('{ingredients_string}', '{name_on_order}')
+            """
+            
+            # データベースへの挿入実行
+            try:
+                session.sql(insert_query).collect()
+                # 成功メッセージの表示
+                st.success('Your Smoothie is on its way, ' + name_on_order + '!', icon="✅")
+            except Exception as e:
+                st.error(f"Failed to submit order to Snowflake: {e}")
+            
+        else:
+            st.warning("Please enter your name before submitting the order.")
+            
+else:
+    st.info("Select your ingredients to see the nutrition information.")
