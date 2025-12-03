@@ -62,7 +62,7 @@ if ingredients_list:
             search_on = search_on_row['SEARCH_ON'].iloc[0]
 
             # 外部APIから栄養情報を取得
-            smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_on)
+            smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
             
             st.write(f"**{fruit_chosen_display}** ({search_on})")
             
