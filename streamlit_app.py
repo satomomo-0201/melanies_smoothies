@@ -23,7 +23,7 @@ name_on_order = st.text_input('Name on Smoothie:')
 st.write('The name on your Smoothie will be:', name_on_order)
 
 # データベースから利用可能なフルーツのオプションを取得
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).collect()
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON')).collect()
 
 # ingredients_list (st.multiselectはリストを期待するため、my_dataframeをリストに変換)
 ingredients_list = st.multiselect(
@@ -34,12 +34,30 @@ ingredients_list = st.multiselect(
 
 time_to_insert = st.button('Submit Order')
 
-if ingredients_list :
-    # 選択されたフルーツをカンマ区切りの文字列に変換
-    ingredients_string = ' '
-
-    for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen + ' '
-        st.subheader(fruit_chosen + ' Nutrition Information')
-        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen)
-        sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+if fruits_selected:
+    
+    # 選択されたフルーツの表示名と検索名 (SEARCH_ON) を対応付ける辞書を作成
+    # { 'Apple': 'Apple', 'Ximenia': 'Ximenia fruit', ... }
+    search_on_dict = {row[0]: row[1] for row in my_dataframe}
+    
+    # 選択されたフルーツのリストを処理
+    for fruit_chosen_display in fruits_selected:
+        
+        # データベースから対応する SEARCH_ON の値を取得
+        fruit_chosen_search = search_on_dict.get(fruit_chosen_display)
+        
+        # 選択されたフルーツの栄養情報を表示
+        st.subheader(fruit_chosen_display + ' Nutrition Information')
+        
+        # API呼び出しに SEARCH_ON の値を使用
+        smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + fruit_chosen_search)
+        
+        # APIレスポンスをデータフレームとして表示
+        st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+        
+    # 注文の処理ロジック (簡略化)
+    ingredients_string = ' '.join(fruits_selected)
+    
+    if time_to_insert:
+        if name_on_order:
+            st.success('Your Smoothie is on its way, ' + name_on_order + '!', icon="✅")
