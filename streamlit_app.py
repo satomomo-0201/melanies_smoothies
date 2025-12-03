@@ -2,6 +2,7 @@
 
 # Import python packages
 import streamlit as st
+import requests  # <-- これを追加
 from snowflake.snowpark.functions import col
 from snowflake.snowpark.functions import when_matched
 
