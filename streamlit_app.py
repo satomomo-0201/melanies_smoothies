@@ -4,6 +4,7 @@ import requests
 from snowflake.snowpark.functions import col
 import pandas as pd
 import json # JSONデータの処理のために追加
+import datetime
 
 # Snowparkセッションの取得
 # Streamlitのコンポーネントとして接続名を直接指定
@@ -84,18 +85,21 @@ if ingredients_list:
     if time_to_insert:
         if name_on_order:
             
-            # --- 【修正】VARCHAR(文字列)として挿入する ---
-            ingredients_string = ', '.join(ingredients_list)
-
-            # 現在のタイムスタンプをSQLフレンドリーな形式で取得
-            current_time_str = datetime.datetime.now().strftime("'%Y-%m-%d %H:%M:%S'")
-            
-            # 注文が 'order_filled' カラムを持つ場合に対応するため、FALSEで挿入
-            # DORAチェックのハッシュ値が一致するため、ordersテーブルに 'order_filled' カラムがあることが前提
-            insert_query = f"""
-                INSERT INTO smoothies.public.orders (ingredients, name_on_order, order_filled)
-                VALUES ('{ingredients_string}', '{name_on_order}', FALSE)
-            """
+            # 注文内容を文字列に変換
+        ingredients_string = ', '.join(ingredients_list)
+        
+        # --- Snowflakeへのデータ挿入処理 ---
+        # タイムスタンプと注文完了フラグを追加
+        insert_query = f"""
+            INSERT INTO smoothies.public.orders 
+            (ingredients, name_on_order, order_ts, order_filled)
+            VALUES (
+                '{ingredients_string}', 
+                '{name_on_order}', 
+                CURRENT_TIMESTAMP(), -- Snowflakeの現在時刻関数を使用
+                FALSE -- 初期状態は未完了
+            )
+        """
             
             # データベースへの挿入実行
             try:
