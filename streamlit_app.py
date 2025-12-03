@@ -86,20 +86,20 @@ if ingredients_list:
         if name_on_order:
             
             # 注文内容を文字列に変換
-          ingredients_string = ', '.join(ingredients_list)
+            ingredients_string = ', '.join(ingredients_list)
         
         # --- Snowflakeへのデータ挿入処理 ---
         # タイムスタンプと注文完了フラグを追加
-          insert_query = f"""
-            INSERT INTO smoothies.public.orders 
-            (ingredients, name_on_order, order_ts, order_filled)
-            VALUES (
+            insert_query = f"""
+              INSERT INTO smoothies.public.orders 
+              (ingredients, name_on_order, order_ts, order_filled)
+              VALUES (
                 '{ingredients_string}', 
                 '{name_on_order}', 
                 CURRENT_TIMESTAMP(), -- Snowflakeの現在時刻関数を使用
                 FALSE -- 初期状態は未完了
               )
-          """
+            """
             
             # データベースへの挿入実行
             try:
