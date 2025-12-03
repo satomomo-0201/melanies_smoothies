@@ -53,7 +53,7 @@ if ingredients_list:
 
         # 🚨 重要な修正点: fruit_chosen 変数は存在しないため、ループ変数 fruit_chosen_display を使用
         # Pandas DataFrameから対応する 'SEARCH_ON' の値を取得
-        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == **fruit_chosen_display**, 'SEARCH_ON'].iloc[0]
+        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen_display, 'SEARCH_ON'].iloc[0]
         
         # 選択されたフルーツの栄養情報を表示
         st.subheader(fruit_chosen_display + ' Nutrition Information')
