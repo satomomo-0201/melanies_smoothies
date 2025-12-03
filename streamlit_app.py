@@ -34,14 +34,14 @@ ingredients_list = st.multiselect(
 
 time_to_insert = st.button('Submit Order')
 
-if fruits_selected:
+if ingredients_list:
     
     # 選択されたフルーツの表示名と検索名 (SEARCH_ON) を対応付ける辞書を作成
     # { 'Apple': 'Apple', 'Ximenia': 'Ximenia fruit', ... }
     search_on_dict = {row[0]: row[1] for row in my_dataframe}
     
     # 選択されたフルーツのリストを処理
-    for fruit_chosen_display in fruits_selected:
+    for fruit_chosen_display in ingredients_list:
         
         # データベースから対応する SEARCH_ON の値を取得
         fruit_chosen_search = search_on_dict.get(fruit_chosen_display)
