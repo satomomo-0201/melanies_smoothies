@@ -86,7 +86,7 @@ if ingredients_list:
         if name_on_order:
             
             # 注文内容を文字列に変換
-            ingredients_string = ', '.join(ingredients_list)
+            ingredients_string = ','.join(ingredients_list)
         
         # --- Snowflakeへのデータ挿入処理 ---
         # タイムスタンプと注文完了フラグを追加
