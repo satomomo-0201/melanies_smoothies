@@ -43,6 +43,12 @@ if ingredients_list and time_to_insert:
     
     # データをSnowflakeに挿入
     session.sql(my_insert_stmt).collect()
-    
+
     # 成功メッセージ
     st.success(f'{name_on_order}, your Smoothie is ordered!', icon="✅")
+
+# streamlit_app.py （スムージールートの栄養情報を表示する新しいセクション）
+
+import requests
+smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/watermelon")
+st.text(smoothiefroot_response)
