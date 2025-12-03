@@ -84,20 +84,15 @@ if ingredients_list:
     if time_to_insert:
         if name_on_order:
             
-            # --- 【重要】ここを修正: リストをSQLのARRAY構文に変換 ---
-            # Pythonリストの要素を単一引用符で囲み、カンマで結合して [ 'fruit1', 'fruit2' ] の形にする
-            # これをSnowflake側で ARRAY/VARIANT 型として挿入する
-            ingredients_sql_array = ", ".join([f"'{item}'" for item in ingredients_list])
+            # --- 【修正】VARCHAR(文字列)として挿入する ---
+            ingredients_string = ', '.join(ingredients_list)
             
-            # Snowflakeの ARRAY_CONSTRUCT 関数を使ってARRAY型として挿入する
-            # 'smoothies.public.orders' テーブルの 'ingredients' 列が ARRAY/VARIANT 型である前提
+            # 注文が 'order_filled' カラムを持つ場合に対応するため、FALSEで挿入
+            # DORAチェックのハッシュ値が一致するため、ordersテーブルに 'order_filled' カラムがあることが前提
             insert_query = f"""
                 INSERT INTO smoothies.public.orders (ingredients, name_on_order, order_filled)
-                VALUES (ARRAY_CONSTRUCT({ingredients_sql_array}), '{name_on_order}', FALSE)
+                VALUES ('{ingredients_string}', '{name_on_order}', FALSE)
             """
-            # ※ DORAチェックのハッシュ値が一致するよう、ordersテーブルに 'order_filled' カラムがあれば、
-            #    最初の Kevin の注文は FALSE、後の Divya, Xi の注文は TRUE で挿入する必要があります。
-            #    ここでは最初の状態を FALSE と仮定して、以下で操作します。
             
             # データベースへの挿入実行
             try:
